@@ -8,5 +8,8 @@
 """
 
 class WPBMessage(object):
+	msgSeq = 0
 	def __init__(self):
+		self.cmdNO = 0
+		self.encryFlag = 1
 		pass
