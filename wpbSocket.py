@@ -30,7 +30,8 @@ def test():
 			data = svr.recv(length[0] - PACKAGELEN)
 			# data = svr.recv(length[0] - PACKAGELEN - PACKHEADLEN)
 			# print ctime() + '收到数据:Len[%d]' % length
-			msg = wpbMessage.WPBMessage(data, 0)
+			msg = wpbMessage.WPBMessage()
+			msg.initFromData(data, '')
 			print msg.getResult()
 		# print json.dumps(data)
 	except Exception, e:

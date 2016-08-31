@@ -25,13 +25,15 @@
 
 import struct
 import json
+from wpbRC4 import RC4
 
 HEADFMT = '!iiBI7B'
 class WPBMessage(object):
-	def __init__(self, data, seq):
-		self.encrpyData = data
-		self.msgSeq = seq
-		self._unpack()
+	def __init__(self, key=None):
+		self.encrpyData = None
+		self.msgSeq = 0
+		self.key = key
+		# self._unpack()
 	
 	def _unpack(self):
 		s = struct.Struct(HEADFMT)
@@ -39,17 +41,23 @@ class WPBMessage(object):
 		self.cmdNo = head[0]
 		self.seq = head[1]
 		self.encrpyFlag = head[2]
+		self.msgSeq = head[3]
 		self._decryp()
 		
 	def _decryp(self):
 		s = struct.Struct(HEADFMT)
 		body = self.encrpyData[s.size:]
 		if self.encrpyFlag:
-			pass
+			rc4 = RC4(self.key)
+			self.decrpyData = json.load(rc4.doEncrpyt(body))
 		else:
-			self.decrpyData = body
-			# self.decrpyData = json.loads(body)
+			self.decrpyData = json.loads(body)
 			
+	def initFromData(self, data, key):
+		self.encrpyData = data
+		self.key = key
+		self._unpack()
+		
 	def getResult(self):
 		return self.decrpyData
 		

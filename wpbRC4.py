@@ -8,20 +8,20 @@
 """
 
 class RC4:
-	def __init__(self, key = None, boxLen = 256):
+	"""RC4 加密解密算法  面向对象方式实现"""
+	def __init__(self, key=None, boxLen=256):
 		assert boxLen > 0
 		self.key = key
 		self.keylen = len(key)
 		self.boxLen = boxLen
-		self._box()
 	
 	def _box(self):
+		"""生成 沙盒"""
 		self.box = range(self.boxLen)
 		x = 0
 		for i in range(256):
 			x = (x + self.box[i] + ord(self.key[i % len(self.key)])) % self.boxLen
 			self.box[i], self.box[x] = self.box[x], self.box[i]
-		print "box = ", self.box
 			
 	def _process(self, srcData):
 		x = 0
@@ -29,23 +29,17 @@ class RC4:
 		outData = []
 		for index in srcData:
 			x = (x + 1) % self.boxLen
-			# numx = self.box[x]
 			y = (y + self.box[x]) % self.boxLen
-			# numy = self.box[y]
-			self.box[x], self.box[y] = self.box[y], self.box[y]
-			# indexK = self.box[(numx + numy) % self.boxLen]
+			self.box[x], self.box[y] = self.box[y], self.box[x]
 			outData.append(chr(ord(index) ^ self.box[(self.box[x] + self.box[y]) % self.boxLen]))
 		return ''.join(outData)
-		
 	
-	def encode(self, string):
+	def doEncrpyt(self, string):
+		self._box()
 		return self._process(string)
-	
-	def decode(self, string):
-		return self._process(string)
-	
 
 def rc4crpty(data, key):
+	"""RC4 加密解密算法  函数方式实现"""
 	x = 0
 	box = range(256)
 	for i in range(256):
@@ -59,29 +53,20 @@ def rc4crpty(data, key):
 		y = (y + box[x]) % 256
 		box[x], box[y] = box[y], box[x]
 		out.append(chr(ord(char) ^ box[(box[x] + box[y]) % 256]))
-	
 	return ''.join(out)
-
-
-def testClass():
-	rc4 = RC4('a', 256)
-	# data = '{"code":"200","seq":"28525482373873664","result":"4.065","lasttime":"1472621553","lastprice":"4.064"}'
-	data = 'h'
-	print 'src --> ', data
-	enData = rc4.encode(data)
-	print 'encrpty --> ', enData
-	deData = rc4.decode(enData)
-	print 'decrpty --> ', deData
-	
-def testFunction():
-	src = '{"code":"200","seq":"28525482373873664","result":"4.065","lasttime":"1472621553","lastprice":"4.064"}'
-	key = 'a32232323'
-	en_data = rc4crpty(src, key)
-	de_data = rc4crpty(en_data, key)
-	
-	print en_data
-	print de_data
 	
 
 if __name__ == '__main__':
-	testFunction()
+	src = '{"code":"200","seq":"28525482373873664","result":"4.065","lasttime":"1472621553","lastprice":"4.064"}'
+	# src = 'n'
+	key = 'asfsfsfssffss'
+	# testFunction(src, key)
+	# testClass(src, key)
+	
+	rc4 = RC4(key)
+	data1 = rc4.encode(src)
+	data2 = rc4crpty(src, key)
+	if data1 == data2:
+		print 'encrypt data is same'
+	print rc4crpty(data1, key)
+	print rc4.decode(data2)
