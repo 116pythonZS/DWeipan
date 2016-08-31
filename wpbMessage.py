@@ -47,7 +47,8 @@ class WPBMessage(object):
 		if self.encrpyFlag:
 			pass
 		else:
-			self.decrpyData = json.loads(body)
+			self.decrpyData = body
+			# self.decrpyData = json.loads(body)
 			
 	def getResult(self):
 		return self.decrpyData
