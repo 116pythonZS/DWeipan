@@ -62,7 +62,8 @@ def rc4crpty(data, key):
 	
 	return ''.join(out)
 
-if __name__ == '__main__':
+
+def testClass():
 	rc4 = RC4('a', 256)
 	# data = '{"code":"200","seq":"28525482373873664","result":"4.065","lasttime":"1472621553","lastprice":"4.064"}'
 	data = 'h'
@@ -72,3 +73,15 @@ if __name__ == '__main__':
 	deData = rc4.decode(enData)
 	print 'decrpty --> ', deData
 	
+def testFunction():
+	src = '{"code":"200","seq":"28525482373873664","result":"4.065","lasttime":"1472621553","lastprice":"4.064"}'
+	key = 'a32232323'
+	en_data = rc4crpty(src, key)
+	de_data = rc4crpty(en_data, key)
+	
+	print en_data
+	print de_data
+	
+
+if __name__ == '__main__':
+	testFunction()
