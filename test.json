@@ -1,0 +1,25 @@
+[
+  {
+    "md5key": "f48d6984f654327d9e83b2668e9b6f54",
+    "deviceId": "A9206F54-B8C5-4D01-9252-C502C09FF35C",
+    "os": "iPhone OS 9.3",
+    "encryptflag": 1,
+    "clientversion": "1.0",
+    "clienttype": 10005,
+    "visitor": 0,
+    "keystring": "13816254394"
+  },
+  {
+    "code" : 200,
+    "groups" : "2,4,7",
+    "isdp" : 1,
+    "iszp" : 0,
+    "lastlogintime" : 1472712934,
+    "loginstatus" : 0,
+    "md5key" : "7b03b96f9e0e2036799d8b9627099589",
+    "systime" : 1472734833,
+    "token" : 1,
+    "url : "http://wechat.dx168.com/redirect/weipan-activity/?sid:1&reffer:2&activityCode:151208"
+  }
+
+]
