@@ -10,14 +10,27 @@
 from socket import *
 from time import ctime
 import json
-import chardet
 import struct
 import wpbMessage
+import WPBCmd
 
 PACKAGELEN = 4      # 包长
 PACKHEADLEN = 20    # 包头长
 BUFSIZE = 1024
 HOST = ("wptest.baidao.com", 9103)
+
+class WPBSocket(object):
+	def __init__(self, host):
+		super.__init__()
+		assert host
+		self.svr = None
+		self.host = host
+		self.connect()
+	
+	def connect(self):
+		self.svr = socket(AF_INET, SOCK_STREAM)
+		self.svr.recv()
+		return self.svr.connect_ex(self.host)
 
 seq = 0
 def test():
@@ -32,7 +45,8 @@ def test():
 			# print ctime() + '收到数据:Len[%d]' % length
 			msg = wpbMessage.WPBMessage()
 			msg.initFromData(data, '')
-			print msg.getResult()
+			if msg.cmdNo != WPBCmd.AgQuote:
+				print msg.getResult()
 		# print json.dumps(data)
 	except Exception, e:
 		print e
