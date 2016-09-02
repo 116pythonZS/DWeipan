@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding:utf-8 -*-
+# -*- coding:cp936 -*-
 
 """
     @version: 1.0
@@ -9,19 +9,19 @@
 
 # typedef struct
 # {
-#     int wCmd; //å‘½ä»¤å·
-#     int wSeq; //åŒ…çš„åºåˆ—å·,ä¸šåŠ¡ä½¿ç”¨,è½¬å‘ä¸å†å…³å¿ƒ
-#     unsigned char  bEncryptFlag; //åŠ å¯†æ ‡å¿—(0: ä¸ åŠ å¯†1:åŠ å¯† )
+#     int wCmd; //ÃüÁîºÅ
+#     int wSeq; //°üµÄĞòÁĞºÅ,ÒµÎñÊ¹ÓÃ,×ª·¢²»ÔÙ¹ØĞÄ
+#     unsigned char  bEncryptFlag; //¼ÓÃÜ±êÖ¾(0: ²» ¼ÓÃÜ1:¼ÓÃÜ )
 #     int wKeySeq;
 #     unsigned char  sReserved[7];
-# } WeixinPkgHead; //åè®®åŒ…å¤´
+# } WeixinPkgHead; //Ğ­Òé°üÍ·
 # typedef struct
 # {
 #     WeixinPkgHead stWeixinPkgHead;
 #     unsigned char   sBody[0];
-# } WeixinPkg; //åè®®åŒ…
+# } WeixinPkg; //Ğ­Òé°ü
 #
-# æ•°æ®åŒ…é•¿åº¦(4+20+åŒ…ä½“é•¿åº¦) + åŒ…å¤´ + åŒ…ä½“
+# Êı¾İ°ü³¤¶È(4+20+°üÌå³¤¶È) + °üÍ· + °üÌå
 
 import struct
 import ctypes
@@ -39,6 +39,7 @@ class WPBMessage(object):
 		self.msgSeq = 0
 		self.encrpyFlag = 0
 		self.key = key
+		self.decrpyData = None
 	
 	def _unpack(self):
 		s = struct.Struct(HEADFMT)
@@ -49,24 +50,41 @@ class WPBMessage(object):
 		self.msgSeq = head[3]
 		body = self.netWorkData[s.size:]
 		self._decryp(body)
+		self._json(self.decrpyData)
 		
 	def _pack(self, data):
-		self._decryp(data)
-		fmt = SENDFMT + '%dB' % len(data)
+		self._decryp(self._dict2Str(data))
+		print len(self.decrpyData)
+		fmt = SENDFMT + '%dB' % len(self.decrpyData)
 		s = struct.Struct(fmt)
 		buf = ctypes.create_string_buffer(s.size)
-		head = [s.size + len(data), self.cmdNo, self.seq, self.encrpyFlag, self.msgSeq]
-		s.pack_into(buf, 0, head)
-		s.pack_into(buf, s.size, data)
+		head = (s.size + len(data), self.cmdNo, self.seq, self.encrpyFlag, self.msgSeq, ord(chr(0)),
+		ord(chr(0)), ord(chr(0)), ord(chr(0)), ord(chr(0)), ord(chr(0)), ord(chr(0)), self.decrpyData)
+		# s.pack_into(buf, 0, *head)
+		# s.pack_into(buf, s.size, data)
+		s.pack(*head)
 		self.decrpyData = s
+	
+	def _dict2Str(self, dictData):
+		listData = ['{']
+		for k in dictData.keys():
+			listData.extend('"' + str(k) + '"')
+			listData.extend(":")
+			listData.extend('"' + str(dictData[k]) + '"')
+			listData.extend(",")
+		listData[-1] = '}'
+		return ''.join(listData)
+	
+	def _json(self, data):
+		return json.load(data)
 		
 	def _decryp(self, data):
 		try:
 			if self.encrpyFlag:
 				rc4 = RC4(self.key)
-				self.decrpyData = json.load(rc4.doEncrpyt(data))
+				self.decrpyData = rc4.doEncrpyt(data)
 			else:
-				self.decrpyData = json.loads(data)
+				self.decrpyData = data
 		except Exception, e:
 			print e, '-[-' + data + '-]-'
 			

@@ -90,7 +90,7 @@ class WPBService(object):
             sleep(HEARTBEAT_INTERVAL)
             if WPBService.svr and WPBService.state:
                 msg = WPBMessage(WPBService.enKey)
-                data = repr({"heartbeattime": repr(int(time()))})
+                data = {"heartbeattime": int(time())}
                 msg.initFromLocalData(WPBCmd.Heartbeat, WPBService.enKey,
                                       WPBService.seqId(), WPBService.encrypt, data)
                 WPBService.WQueue.put(msg)
