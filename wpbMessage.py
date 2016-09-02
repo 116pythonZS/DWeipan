@@ -35,30 +35,40 @@ class WPBMessage(object):
 		self.key = key
 		# self._unpack()
 	
-	def _unpack(self):
+	def _pack(self):
 		s = struct.Struct(HEADFMT)
 		head = s.unpack_from(self.encrpyData, 0)
 		self.cmdNo = head[0]
 		self.seq = head[1]
 		self.encrpyFlag = head[2]
 		self.msgSeq = head[3]
-		self._decryp()
-		
-	def _decryp(self):
-		s = struct.Struct(HEADFMT)
 		body = self.encrpyData[s.size:]
+		self._decryp(body)
+		
+	def _decryp(self, data):
 		if self.encrpyFlag:
 			rc4 = RC4(self.key)
-			self.decrpyData = json.load(rc4.doEncrpyt(body))
+			self.decrpyData = json.load(rc4.doEncrpyt(data))
 		else:
-			self.decrpyData = json.loads(body)
+			self.decrpyData = json.loads(data)
 			
-	def initFromData(self, data, key):
+	def initFromEnData(self, data, key):
 		self.encrpyData = data
 		self.key = key
-		self._unpack()
+		self._pack()
+	
+	def initFromDeData(self, data, key, cmdNo, flag, seq):
+		self.key = key
+		self.decrpyData = data
+		self.cmdNo = cmdNo
+		self.encrpyFlag = flag
+		self.msgSeq = seq
+		self._decryp(data)
 		
-	def getResult(self):
+	def getDecrpyResult(self):
 		return self.decrpyData
+	
+	def getEncrpyResult(self):
+		return self.encrpyData
 		
 		
