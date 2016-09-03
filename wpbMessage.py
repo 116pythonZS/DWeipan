@@ -57,7 +57,7 @@ class WPBMessage(object):
 		s = struct.Struct(fmt)
 		buf = ctypes.create_string_buffer(s.size)
 		sendDataList = []
-		sendDataList.extend([s.size + len(self.decrpyData)])
+		sendDataList.extend([s.size])
 		sendDataList.extend([self.cmdNo])
 		sendDataList.extend([self.seq])
 		sendDataList.extend([self.encrpyFlag])
@@ -67,7 +67,6 @@ class WPBMessage(object):
 		sendData = tuple(sendDataList)
 		try:
 			self.decrpyData = s.pack(*sendData)
-			pass
 		except Exception, e:
 			print e
 		
@@ -102,7 +101,7 @@ class WPBMessage(object):
 		return strData
 	
 	def _json(self, data):
-		return json.load(data)
+		return json.loads(data)
 		
 	def _decryp(self, data):
 		try:

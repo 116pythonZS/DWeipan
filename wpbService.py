@@ -7,7 +7,8 @@
 @contact: huxueli1986@163.com
 """
 
-from socket import *
+import socket
+import sys
 import struct
 from wpbMessage import WPBMessage
 import WPBCmd
@@ -19,7 +20,8 @@ INT_LEN = 4      # 包长
 PACKHEADLEN = 20    # 包头长
 BUFSIZE = 1024
 # HOST = ("wptest.baidao.com", 9103)
-HOST = ("localhost", 21567)
+# HOST = ("localhost", 21567)
+HOST = ("localhost", 8888)
 
 HEARTBEAT_INTERVAL = 10
 RECONNECT_INTERVAL = 30
@@ -47,17 +49,13 @@ class Singleton(type):
     
 class WPBService(object):
     __metaclass__ = Singleton
+
+    def __init__(self, *args, **kw):
+        super(WPBService, self).__init__(*args, **kw)
     
-    svr = None
-    state = 0
-    RQueue = Queue()
-    WQueue = Queue()
-    seq = 0
-    encrypt = 0
-    enKey = None
-    isVistor = 1
-    userKey = None
-    
+    @staticmethod
+    def shared():
+        return WPBService()
     @staticmethod
     def seqId():
         if WPBService.seq < 0:
@@ -67,56 +65,59 @@ class WPBService(object):
     
     @staticmethod
     def reader():
-        while True:
-            if WPBService.svr and WPBService.state:
-                print '接受数据中.....'
-                try:
-                    lenPack = WPBService.svr.recv(INT_LEN)
-                    # print '%0X' % lenPack
-                    print len(lenPack)
-                    s = struct.Struct('!i')
-                    length = s.unpack(lenPack)
-                    data = WPBService.svr.recv(length[0] - INT_LEN)
-                    msg = WPBMessage(WPBService.enKey)
-                    msg.initFromNetData(data, WPBService.enKey)
-                    WPBService.RQueue.put(msg)
-                except Exception, e:
-                    print 'Recv error??? -->',e
+        while True and WPBService.svr and WPBService.state:
+            try:
+                lenPack = WPBService.svr.recv(INT_LEN)
+                s = struct.Struct('!i')
+                length = s.unpack(lenPack)
+                data = WPBService.svr.recv(length[0] - INT_LEN)
+                msg = WPBMessage(WPBService.enKey)
+                msg.initFromNetData(data, WPBService.enKey)
+                WPBService.RQueue.put(msg)
+                fmt = '!iiBi7B%dc' % (len(data)-20)
+                s_data = struct.Struct(fmt)
+                tp = s_data.unpack(data)
+                print 'Recv cmd[%d] body-->' % tp[0] + ''.join(tp[11:])
+            except socket.error, arg:
+                (errno,err_msg) = arg
+                print "Connect server failed: %s, errno=%d" % (err_msg,errno)
+                WPBService.clear()
+            except Exception, e:
+                print e
             
     @staticmethod
     def dispatchMsg():
-        while True:
-            if WPBService.RQueue.qsize() and WPBService.state:
-                msg = WPBService.RQueue.get()
-                print msg.getResult()
+        while True and WPBService.RQueue.qsize() and WPBService.state:
+            msg = WPBService.RQueue.get()
     
     @staticmethod
     def writer():
-        while True:
-            if WPBService.WQueue.qsize() and WPBService.state:
+        while True and WPBService.WQueue.qsize() and WPBService.state:
+            try:
                 msg = WPBService.WQueue.get()
-                try:
-                    WPBService.svr.send(msg.getResult())
-                    data = msg.getResult()
-                    fmt = '!iiiBi7B%dc' % (len(data)-24)
-                    s_data = struct.Struct(fmt)
-                    tp = s_data.unpack(data)
-                    print tp
-                    print 'Send completed!!! %s' % msg.getResult()
-                except Exception, e:
-                    print 'Send error!!!'
-                    print e
+                WPBService.svr.send(msg.getResult())
+                data = msg.getResult()
+                fmt = '!iiiBi7B%dc' % (len(data)-24)
+                s_data = struct.Struct(fmt)
+                tp = s_data.unpack(data)
+                # print tp
+                print 'Send cmd[%d] body-->' % (tp[1]) + ''.join(tp[12:])
+            except socket.error, arg:
+                (errno,err_msg) = arg
+                print "Connect server failed: %s, errno=%d" % (err_msg,errno)
+                WPBService.clear()
+            except Exception, e:
+                print e
     
     @staticmethod
     def heartbeat():
-        while True:
+        while WPBService.svr and WPBService.state:
             sleep(HEARTBEAT_INTERVAL)
-            if WPBService.svr and WPBService.state:
-                msg = WPBMessage(WPBService.enKey)
-                data = {"heartbeattime": int(time())}
-                msg.initFromLocalData(WPBCmd.Heartbeat, WPBService.enKey,
-                                      WPBService.seqId(), WPBService.encrypt, data)
-                WPBService.WQueue.put(msg)
+            msg = WPBMessage(WPBService.enKey)
+            data = {"heartbeattime": int(time())}
+            msg.initFromLocalData(WPBCmd.Heartbeat, WPBService.enKey,
+                                  WPBService.seqId(), WPBService.encrypt, data)
+            WPBService.WQueue.put(msg)
     
     @staticmethod
     def reconnect():
@@ -126,9 +127,19 @@ class WPBService(object):
             # service._connect()
             # service._start()
     
+    @staticmethod
+    def clear():
+        WPBService.svr = None
+        WPBService.state = 0
+        WPBService.RQueue = Queue()
+        WPBService.WQueue = Queue()
+        WPBService.seq = 0
+        WPBService.encrypt = 0
+        WPBService.enKey = None
+        
     def _connect(self):
         try:
-            WPBService.svr = socket(AF_INET, SOCK_STREAM)
+            WPBService.svr = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             WPBService.svr.connect(HOST)
             WPBService.state = 1
             msg = WPBMessage()
@@ -136,9 +147,12 @@ class WPBService(object):
                                   encrpyFlag=0, seq=self.seqId(),
                                   data=CONNECT_BODY, transfer=0)
             WPBService.WQueue.put(msg)
+        except socket.error, arg:
+            (errno, err_msg) = arg
+            print "Connect server failed: %s, errno=%d" % (err_msg, errno)
+            WPBService.clear()
         except Exception, e:
             print e
-            WPBService.state = 0
             
     def _start(self):
         threadFunc = [WPBService.reader, WPBService.writer,
