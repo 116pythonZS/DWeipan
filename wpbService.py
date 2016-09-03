@@ -18,10 +18,22 @@ from Queue import Queue
 INT_LEN = 4      # 包长
 PACKHEADLEN = 20    # 包头长
 BUFSIZE = 1024
-HOST = ("wptest.baidao.com", 9103)
+# HOST = ("wptest.baidao.com", 9103)
+HOST = ("localhost", 21567)
 
 HEARTBEAT_INTERVAL = 10
 RECONNECT_INTERVAL = 30
+
+CONNECT_BODY = {
+    "md5key": "f48d6984f654327d9e83b2668e9b6f54",
+    "deviceId": "A9206F54-B8C5-4D01-9252-C502C09FF35C",
+    "os": "iPhone OS 9.3",
+    "encryptflag": 1,
+    "clientversion": "1.0",
+    "clienttype": 10005,
+    "visitor": 0,
+    "keystring": "13816254394"
+}
 
 class Singleton(type):
     def __init__(cls, name, bases, dic):
@@ -57,12 +69,19 @@ class WPBService(object):
     def reader():
         while True:
             if WPBService.svr and WPBService.state:
-                lenPack = WPBService.svr.recv(INT_LEN)
-                length = struct.unpack('!i', lenPack)
-                data = WPBService.svr.recv(length[0] - INT_LEN)
-                msg = WPBMessage(WPBService.enKey)
-                msg.initFromNetData(data, WPBService.enKey)
-                WPBService.RQueue.put(msg)
+                print '接受数据中.....'
+                try:
+                    lenPack = WPBService.svr.recv(INT_LEN)
+                    # print '%0X' % lenPack
+                    print len(lenPack)
+                    s = struct.Struct('!i')
+                    length = s.unpack(lenPack)
+                    data = WPBService.svr.recv(length[0] - INT_LEN)
+                    msg = WPBMessage(WPBService.enKey)
+                    msg.initFromNetData(data, WPBService.enKey)
+                    WPBService.RQueue.put(msg)
+                except Exception, e:
+                    print 'Recv error??? -->',e
             
     @staticmethod
     def dispatchMsg():
@@ -70,19 +89,23 @@ class WPBService(object):
             if WPBService.RQueue.qsize() and WPBService.state:
                 msg = WPBService.RQueue.get()
                 print msg.getResult()
-            
     
     @staticmethod
     def writer():
         while True:
-            if WPBService.svr and WPBService.state:
-                # lenPack = WPBService.svr.recv(PACKAGELEN)
-                # length = struct.unpack('!i', lenPack)
-                # data = WPBService.svr.recv(length[0] - PACKAGELEN)
-                # msg = WPBMessage(WPBService.enKey)
-                # msg.initFromNetData(data, WPBService.enKey)
-                # WPBService.RQueue.put(msg)
-                pass
+            if WPBService.WQueue.qsize() and WPBService.state:
+                msg = WPBService.WQueue.get()
+                try:
+                    WPBService.svr.send(msg.getResult())
+                    data = msg.getResult()
+                    fmt = '!iiiBi7B%dc' % (len(data)-24)
+                    s_data = struct.Struct(fmt)
+                    tp = s_data.unpack(data)
+                    print tp
+                    print 'Send completed!!! %s' % msg.getResult()
+                except Exception, e:
+                    print 'Send error!!!'
+                    print e
     
     @staticmethod
     def heartbeat():
@@ -108,6 +131,11 @@ class WPBService(object):
             WPBService.svr = socket(AF_INET, SOCK_STREAM)
             WPBService.svr.connect(HOST)
             WPBService.state = 1
+            msg = WPBMessage()
+            msg.initFromLocalData(cmdNo=WPBCmd.Connect_Socket, key=None,
+                                  encrpyFlag=0, seq=self.seqId(),
+                                  data=CONNECT_BODY, transfer=0)
+            WPBService.WQueue.put(msg)
         except Exception, e:
             print e
             WPBService.state = 0

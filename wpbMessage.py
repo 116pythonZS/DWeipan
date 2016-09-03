@@ -29,7 +29,7 @@ import json
 from wpbRC4 import RC4
 
 HEADFMT = '!iiBI7B'
-SENDFMT = '!iiiBI7B'
+SENDFMT = '!iiiBi7B'
 class WPBMessage(object):
 	def __init__(self, key=None):
 		self.cmdNo = 0
@@ -51,36 +51,62 @@ class WPBMessage(object):
 		body = self.netWorkData[s.size:]
 		self._decryp(body)
 		self._json(self.decrpyData)
-		
+	
 	def _pack(self, data):
-		self._decryp(self._dict2Str(data))
-		print len(self.decrpyData)
-		fmt = SENDFMT + '%dB' % len(self.decrpyData)
+		fmt = SENDFMT + '%dc' % len(self.decrpyData)
 		s = struct.Struct(fmt)
 		buf = ctypes.create_string_buffer(s.size)
-		head = (s.size + len(data), self.cmdNo, self.seq, self.encrpyFlag, self.msgSeq, ord(chr(0)),
-		ord(chr(0)), ord(chr(0)), ord(chr(0)), ord(chr(0)), ord(chr(0)), ord(chr(0)), self.decrpyData)
-		# s.pack_into(buf, 0, *head)
-		# s.pack_into(buf, s.size, data)
-		s.pack(*head)
-		self.decrpyData = s
+		sendDataList = []
+		sendDataList.extend([s.size + len(self.decrpyData)])
+		sendDataList.extend([self.cmdNo])
+		sendDataList.extend([self.seq])
+		sendDataList.extend([self.encrpyFlag])
+		sendDataList.extend([self.msgSeq])
+		sendDataList.extend([0, 0, 0, 0, 0, 0, 0])
+		sendDataList.extend(list(self.decrpyData))
+		sendData = tuple(sendDataList)
+		try:
+			self.decrpyData = s.pack(*sendData)
+			pass
+		except Exception, e:
+			print e
+		
+	# def _pack(self, data):
+	# 	self._decryp(self._dict2Str(data))
+	# 	print len(self.decrpyData)
+	# 	fmt = SENDFMT + '%dB' % len(self.decrpyData)
+	# 	s = struct.Struct(fmt)
+	# 	buf = ctypes.create_string_buffer(s.size)
+	# 	head = (s.size + len(data), self.cmdNo, self.seq, self.encrpyFlag, self.msgSeq, ord(chr(0)),
+	# 	ord(chr(0)), ord(chr(0)), ord(chr(0)), ord(chr(0)), ord(chr(0)), ord(chr(0)), self.decrpyData)
+	# 	# s.pack_into(buf, 0, *head)
+	# 	# s.pack_into(buf, s.size, data)
+	# 	try:
+	# 		s.pack(fmt, *head)
+	# 	except Exception, e:
+	# 		print e
+	# 	self.decrpyData = s
 	
-	def _dict2Str(self, dictData):
+	def _dict2Str(self, dictData, transfer=1):
 		listData = ['{']
 		for k in dictData.keys():
 			listData.extend('"' + str(k) + '"')
 			listData.extend(":")
-			listData.extend('"' + str(dictData[k]) + '"')
+			if isinstance(dictData[k], (int, long)) and transfer==0:
+				listData.extend(str(dictData[k]))
+			else:
+				listData.extend('"' + str(dictData[k]) + '"')
 			listData.extend(",")
 		listData[-1] = '}'
-		return ''.join(listData)
+		strData = ''.join(listData)
+		return strData
 	
 	def _json(self, data):
 		return json.load(data)
 		
 	def _decryp(self, data):
 		try:
-			if self.encrpyFlag:
+			if self.encrpyFlag and self.key:
 				rc4 = RC4(self.key)
 				self.decrpyData = rc4.doEncrpyt(data)
 			else:
@@ -93,12 +119,13 @@ class WPBMessage(object):
 		self.key = key
 		self._unpack()
 		
-	def initFromLocalData(self, cmdNo, key, seq, encrpyFlag, data):
+	def initFromLocalData(self, cmdNo, key, seq, encrpyFlag, data, transfer=1):
 		self.cmdNo = cmdNo
 		self.key = key
 		self.seq = seq
 		self.hostData = data
 		self.encrpyFlag = encrpyFlag
+		self._decryp(self._dict2Str(data, transfer))
 		self._pack(data)
 		
 	def getResult(self):
